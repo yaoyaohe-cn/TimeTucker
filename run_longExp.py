@@ -17,6 +17,7 @@ def str2bool(value):
 parser = argparse.ArgumentParser(description='SparseTSF & TimeTucker for Time Series Forecasting')
 
 # basic config
+parser.add_argument('--task_name', type=str, default='long_term_forecast', help='task name')
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='TimeTucker', help='model name')
@@ -29,6 +30,7 @@ parser.add_argument('--features', type=str, default='M', help='forecasting task,
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument('--freq', type=str, default='h', help='freq for time features encoding')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--seasonal_patterns', type=str, default='Monthly', help='subset for M4')
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=720, help='input sequence length')

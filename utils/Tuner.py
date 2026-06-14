@@ -133,8 +133,8 @@ class Tuner:
         else:
             params['r_n'] = trial.suggest_int('r_n', 2, max_rn, step=2)
 
-        params['learning_rate'] = trial.suggest_float('learning_rate', 1e-4, 5e-1, log=True)
-        params['batch_size'] = trial.suggest_categorical('batch_size', [32, 64, 128])
+        params['learning_rate'] = trial.suggest_float('learning_rate', 1e-3, 2e-1, log=True)
+        params['batch_size'] = trial.suggest_categorical('batch_size', [64, 128, 256])
         params['orthogonal_weight'] = trial.suggest_float('orthogonal_weight', 0.0, 0.20, step=0.01)
 
         orthogonal_choices = self._split_int_choices(getattr(args, 'optuna_use_orthogonal_choices', '0,1'))

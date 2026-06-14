@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import TimeBase, TimeTucker
+from models import TimeTucker  # 【修复】：彻底移除了不存在的 TimeBase
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -23,7 +23,8 @@ class Exp_Main(Exp_Basic):
         self.use_orthogonal = args.use_orthogonal
         
     def _build_model(self):
-        model_dict = {'LightTimeBaseTST': TimeBase, 'TimeTucker': TimeTucker}
+        # 【修复】：模型字典里只保留当前架构，彻底清除 LightTimeBaseTST 历史包袱
+        model_dict = {'TimeTucker': TimeTucker}
         model = model_dict[self.args.model].Model(self.args).float()
         print(f"Total Parameters: {sum(p.numel() for p in model.parameters())}")
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -55,11 +56,15 @@ class Exp_Main(Exp_Basic):
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+            for i, batch in enumerate(vali_loader):
+                # 动态解包：兼容只返回 (x, y) 和返回 (x, y, x_mark, y_mark) 的不同数据集
+                batch_x = batch[0].float().to(self.device)
+                batch_y = batch[1].float()
+                if len(batch) == 4:
+                    batch_x_mark = batch[2].float().to(self.device)
+                    batch_y_mark = batch[3].float().to(self.device)
+                else:
+                    batch_x_mark, batch_y_mark = None, None
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
@@ -127,13 +132,18 @@ class Exp_Main(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
             
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, batch in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                
+                # 动态解包
+                batch_x = batch[0].float().to(self.device)
+                batch_y = batch[1].float().to(self.device)
+                if len(batch) == 4:
+                    batch_x_mark = batch[2].float().to(self.device)
+                    batch_y_mark = batch[3].float().to(self.device)
+                else:
+                    batch_x_mark, batch_y_mark = None, None
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
@@ -229,11 +239,15 @@ class Exp_Main(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+            for i, batch in enumerate(test_loader):
+                # 动态解包
+                batch_x = batch[0].float().to(self.device)
+                batch_y = batch[1].float().to(self.device)
+                if len(batch) == 4:
+                    batch_x_mark = batch[2].float().to(self.device)
+                    batch_y_mark = batch[3].float().to(self.device)
+                else:
+                    batch_x_mark, batch_y_mark = None, None
 
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
@@ -263,6 +277,17 @@ class Exp_Main(Exp_Basic):
         trues = np.concatenate(trues, axis=0)
         mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
+
+        f = open("result.txt", 'a')
+        f.write(setting + "  \n")
+        f.write('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
+        f.write('\n')
+        f.write('\n')
+        f.close()
+
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, rse]))
+        np.save(folder_path + 'pred.npy', preds)
+        np.save(folder_path + 'true.npy', trues)
         
         return mse, mae
 

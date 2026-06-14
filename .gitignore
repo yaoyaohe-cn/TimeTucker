@@ -1,0 +1,31 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Training outputs
+checkpoints/
+logs/
+test_results/
+Output/
+result.txt
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data
+*.csv
+*.pkl
+*.pth
+*.pt
+
+# OS
+.DS_Store
+Thumbs.db

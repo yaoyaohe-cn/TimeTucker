@@ -5,6 +5,7 @@ model_id_name=ETTh1
 data_name=ETTh1
 seq_len=720
 gpu=${GPU:-0}
+
 if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
@@ -12,6 +13,7 @@ if [ ! -d "./logs/${model_id_name}" ]; then
     mkdir ./logs/${model_id_name}
 fi
 dir=./logs/${model_id_name}
+
 
 pred_len=96
 python -u run_longExp.py \
@@ -30,11 +32,14 @@ python -u run_longExp.py \
     --train_epochs 30 \
     --patience 5 \
     --r_n 6 \
-    --r_c 16 \
+    --r_c 7 \
     --gpu $gpu \
     --itr 1 \
-    --batch_size 64 \
-    --learning_rate 1e-1 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+    --batch_size 128 \
+    --learning_rate 0.003 \
+    --dropout 0.1 \
+    > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+
 
 pred_len=192
 python -u run_longExp.py \
@@ -53,11 +58,13 @@ python -u run_longExp.py \
     --train_epochs 30 \
     --patience 5 \
     --r_n 6 \
-    --r_c 16 \
+    --r_c 7 \
     --gpu $gpu \
-    --itr 1 \
-    --batch_size 256 \
-    --learning_rate 4e-1 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+    --batch_size 128 \
+    --learning_rate 0.003 \
+    --dropout 0.1 \
+    > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+
 
 pred_len=336
 python -u run_longExp.py \
@@ -76,16 +83,17 @@ python -u run_longExp.py \
     --train_epochs 30 \
     --patience 5 \
     --r_n 6 \
-    --r_c 16 \
+    --r_c 7 \
     --gpu $gpu \
-    --itr 1 \
-    --batch_size 256 \
-    --learning_rate 4e-1 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+    --batch_size 128 \
+    --learning_rate 0.003 \
+    --dropout 0.1 \
+    > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
 
 pred_len=720
 python -u run_longExp.py \
     --is_training 1 \
-    --orthogonal_weight 0.12 \
+    --orthogonal_weight 0.1 \
     --root_path "$root_path_name" \
     --data_path "$data_path_name" \
     --model_id "${model_id_name}_${seq_len}_${pred_len}" \
@@ -99,8 +107,10 @@ python -u run_longExp.py \
     --train_epochs 30 \
     --patience 5 \
     --r_n 6 \
-    --r_c 16 \
+    --r_c 7 \
     --gpu $gpu \
     --itr 1 \
-    --batch_size 64 \
-    --learning_rate 5e-2 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
+    --batch_size 128 \
+    --learning_rate 0.003 \
+    --dropout 0.1 \
+    > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
