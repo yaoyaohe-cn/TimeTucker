@@ -58,10 +58,13 @@ class Model(nn.Module):
         if self.pred_len > self.seg_num_y * self.period_len:
             self.seg_num_y += 1
 
-        # 张量空间的双重低秩维度
+        # ==========================================
+        # 彻底清理 basis_num 逻辑，直接安全获取 r_n 和 r_c
+        # ==========================================
         configured_r_n = getattr(configs, 'r_n', None)
         configured_r_c = getattr(configs, 'r_c', None)
-        self.r_n = configured_r_n if configured_r_n is not None else configs.basis_num  # Mode-1: Temporal Rank
+        
+        self.r_n = configured_r_n if configured_r_n is not None else 6  # Mode-1: Temporal Rank 默认值 6
         self.r_c = configured_r_c if configured_r_c is not None else min(self.enc_in, 16) # Mode-3: Spatial/Channel Rank
 
         if self.r_n <= 0 or self.r_c <= 0:
@@ -162,12 +165,10 @@ class Model(nn.Module):
             loss_var = cal_orthogonal_loss(self.W_var.unsqueeze(0))
             
             # 约束3 (核心创新): 动态核心张量的数据依赖正交化
-            # 为了计算 E_{(1)} E_{(1)}^T (形状为 R_N x R_N)
-            # 我们将 core展开为 [B, R_N, P*R_C]，并进行 transpose 以满足函数内部 A^T A 的计算逻辑
-            core_unfold_T = core_tensor.reshape(b, self.r_n, -1).transpose(-2, -1) # shape: [B, P*R_C, R_N]
-            loss_core = cal_orthogonal_loss(core_unfold_T) # 内部计算 A^T A 得到 [B, R_N, R_N]
+            core_unfold_T = core_tensor.reshape(b, self.r_n, -1).transpose(-2, -1) 
+            loss_core = cal_orthogonal_loss(core_unfold_T) 
             
-            # 合并损失，对动态 loss 施加 0.5 的保守系数防止梯度过激
+            # 合并损失
             orthogonal_loss = loss_seg + loss_var + 0.5 * loss_core
             
             return x_out[:, :self.pred_len, :], orthogonal_loss
