@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.optim import lr_scheduler
+
 import os
 import time
 import warnings
@@ -110,7 +111,6 @@ class Exp_Main(Exp_Basic):
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
 
-        # 核心修复：仅在配置为 TST 时使用 OneCycleLR，避免冲突
         scheduler = None
         if self.args.lradj == 'TST':
             scheduler = lr_scheduler.OneCycleLR(optimizer=model_optim,
@@ -123,7 +123,7 @@ class Exp_Main(Exp_Basic):
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
-            ortho_loss_record = [] # 记录正交损失
+            ortho_loss_record = []
             self.model.train()
             epoch_time = time.time()
             
