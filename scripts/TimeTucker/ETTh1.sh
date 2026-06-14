@@ -29,7 +29,8 @@ python -u run_longExp.py \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
-    --basis_num 6 \
+    --r_n 6 \
+    --r_c 16 \
     --gpu $gpu \
     --itr 1 \
     --batch_size 64 \
@@ -51,12 +52,12 @@ python -u run_longExp.py \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
-    --basis_num 6 \
+    --r_n 6 \
+    --r_c 16 \
     --gpu $gpu \
     --itr 1 \
     --batch_size 256 \
     --learning_rate 4e-1 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
-
 
 pred_len=336
 python -u run_longExp.py \
@@ -74,12 +75,12 @@ python -u run_longExp.py \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
-    --basis_num 6 \
+    --r_n 6 \
+    --r_c 16 \
     --gpu $gpu \
     --itr 1 \
     --batch_size 256 \
     --learning_rate 4e-1 > "$dir/${model_id_name}_${seq_len}_${pred_len}.log"
-
 
 pred_len=720
 python -u run_longExp.py \
@@ -97,7 +98,8 @@ python -u run_longExp.py \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
-    --basis_num 6 \
+    --r_n 6 \
+    --r_c 16 \
     --gpu $gpu \
     --itr 1 \
     --batch_size 64 \
