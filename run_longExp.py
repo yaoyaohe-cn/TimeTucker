@@ -37,9 +37,8 @@ parser.add_argument('--pred_len', type=int, default=96, help='prediction sequenc
 
 # TimeTucker / SparseTSF
 parser.add_argument('--period_len', type=int, default=24, help='period length')
-parser.add_argument('--basis_num', type=int, default=6, help='basis num')
-parser.add_argument('--r_n', type=int, default=None, help='TimeTucker segment rank')
-parser.add_argument('--r_c', type=int, default=None, help='TimeTucker channel rank')
+parser.add_argument('--r_n', type=int, default=6, help='TimeTucker segment rank')
+parser.add_argument('--r_c', type=int, default=16, help='TimeTucker channel rank')
 parser.add_argument('--use_period_norm', type=int, default=1, help='norm')
 parser.add_argument('--use_orthogonal', type=int, default=1, help='orthogonal')
 parser.add_argument('--orthogonal_weight', type=float, default=0.1, help='orthogonal weight')
