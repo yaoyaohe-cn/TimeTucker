@@ -5,9 +5,9 @@ import importlib
 import os
 import random
 import sys
+import traceback
 from collections import defaultdict
 from pathlib import Path
-import traceback
 
 import numpy as np
 import torch
@@ -30,7 +30,7 @@ class Tuner:
             print("=========================================================================")
             print("WARNING: n_jobs > 1 detected! PyTorch global seeds WILL be polluted")
             print("across Python threads. Trials may not be reproducible. For rigorous")
-            print("benchmarking, n_jobs MUST be 1 per node.")
+            print("benchmarking, n_jobs MUST be 1 per node. Rely on Bash Background workers instead.")
             print("=========================================================================")
         self.result_dic = defaultdict(list)
         self.current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -43,14 +43,16 @@ class Tuner:
             setattr(trial_args, key, value)
         trial_args.basis_num = trial_args.r_n
 
+        # 【改造点 1：Trial-specific seed，探索初始化分布】
+        trial_seed = self.fixedSeed + trial.number
+        
         setting = '{}_{}_sl{}_pl{}_rn{}_rc{}_ow{}_lr{}_bs{}_trial{}_sd{}'.format(
             trial_args.model, trial_args.data, trial_args.seq_len, trial_args.pred_len,
             trial_args.r_n, trial_args.r_c, trial_args.orthogonal_weight,
-            trial_args.learning_rate, trial_args.batch_size, trial.number, self.fixedSeed
+            trial_args.learning_rate, trial_args.batch_size, trial.number, trial_seed
         )
 
-        # 核心修复：强制使用绝对固定的 Seed，移除 + trial.number，杜绝种子运气成分
-        self._set_random_seed(self.fixedSeed)
+        self._set_random_seed(trial_seed)
         exp = Exp_Main(trial_args)
 
         try:
@@ -65,20 +67,17 @@ class Tuner:
                 self._cleanup_cuda()
                 raise optuna.exceptions.TrialPruned()
             else:
-                # 不再掩盖 RuntimeError
                 traceback.print_exc()
                 raise e
         finally:
             self._cleanup_cuda()
-            # 不能用 except Exception 掩盖所有 Bug，必须让真实 Bug 抛出中断程序
 
     def tune(self, args):
         if args.model != 'TimeTucker':
             raise ValueError('TimeTucker Optuna tuner only supports --model TimeTucker.')
 
         output_dir = getattr(args, 'optuna_results_dir', './Output')
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
         sampler = optuna.samplers.TPESampler(seed=self.fixedSeed)
         pruner = optuna.pruners.MedianPruner(
@@ -86,7 +85,20 @@ class Tuner:
             n_warmup_steps=1,
             interval_steps=1,
         )
-        self.study = optuna.create_study(direction='minimize', sampler=sampler, pruner=pruner)
+        
+        # 使用 SQLite 允许多进程并发
+        study_name = f"{args.model}_{args.data}_{args.pred_len}_study"
+        db_path = os.path.join(output_dir, f"{study_name}.db")
+        storage_url = f"sqlite:///{db_path}"
+
+        self.study = optuna.create_study(
+            study_name=study_name,
+            storage=storage_url,
+            load_if_exists=True,
+            direction='minimize',
+            sampler=sampler,
+            pruner=pruner,
+        )
 
         self.study.optimize(
             lambda trial: self.optuna_objective(trial, args),
@@ -101,7 +113,6 @@ class Tuner:
     def _suggest_timetucker_params(self, trial, args):
         params = {}
         
-        # 1. 周期设定
         if getattr(args, 'optuna_period_search', False):
             period_choices = self._split_int_choices(getattr(args, 'optuna_period_choices', '12,24,48'))
             period_len = trial.suggest_categorical('period_len', period_choices)
@@ -109,27 +120,24 @@ class Tuner:
             period_len = args.period_len
         params['period_len'] = period_len
 
-        # 2. 空间秩 r_c
+        # 动态锁死边界，防破坏数学机制
         max_rc = min(32, args.enc_in)
         if max_rc <= 4:
             params['r_c'] = trial.suggest_int('r_c', 1, max_rc)
         else:
             params['r_c'] = trial.suggest_int('r_c', 4, max_rc, step=4)
 
-        # 3. 核心修复：时间秩 r_n 的严格边界保护
         seg_num_x = args.seq_len // period_len
         max_rn = min(12, seg_num_x)
         if max_rn < 2:
-            params['r_n'] = 1 # 极其特殊的情况保底
+            params['r_n'] = 1 
         else:
             params['r_n'] = trial.suggest_int('r_n', 2, max_rn, step=2)
 
-        # 4. 其他核心参数放开搜索边界
         params['learning_rate'] = trial.suggest_float('learning_rate', 1e-4, 5e-1, log=True)
         params['batch_size'] = trial.suggest_categorical('batch_size', [32, 64, 128])
         params['orthogonal_weight'] = trial.suggest_float('orthogonal_weight', 0.0, 0.20, step=0.01)
 
-        # 正交开关
         orthogonal_choices = self._split_int_choices(getattr(args, 'optuna_use_orthogonal_choices', '0,1'))
         if len(orthogonal_choices) == 1:
             params['use_orthogonal'] = orthogonal_choices[0]
@@ -140,7 +148,7 @@ class Tuner:
 
     def _final_evaluation_with_best_params(self, args):
         print('\n' + '=' * 60)
-        print('Final Evaluation with Best Hyperparameters')
+        print('Phase 2: Final Robust Evaluation (Validation Selection)')
         print('=' * 60)
 
         final_args = copy.deepcopy(args)
@@ -151,21 +159,45 @@ class Tuner:
             final_args.use_orthogonal = self._split_int_choices(getattr(args, 'optuna_use_orthogonal_choices', '1'))[0]
         final_args.basis_num = final_args.r_n
 
-        setting = '{}_{}_sl{}_pl{}_rn{}_rc{}_ow{}_lr{}_bs{}_sd{}_final'.format(
-            final_args.model, final_args.data, final_args.seq_len, final_args.pred_len,
-            final_args.r_n, final_args.r_c, final_args.orthogonal_weight,
-            final_args.learning_rate, final_args.batch_size, self.fixedSeed
-        )
+        # 【改造点 2：串行多 Seed 验证，严格选出最优模型】
+        num_eval_seeds = 3  
+        best_val_loss = float('inf')
+        best_setting = None
+        best_seed = None
 
-        # Retrain 和 Best Trial 严格共享相同的种子
-        self._set_random_seed(self.fixedSeed)
+        print(f"Retraining best params: {self.study.best_params}")
+
+        for i in range(num_eval_seeds):
+            current_seed = self.fixedSeed + i
+            setting = '{}_{}_sl{}_pl{}_rn{}_rc{}_ow{}_lr{}_bs{}_final_sd{}'.format(
+                final_args.model, final_args.data, final_args.seq_len, final_args.pred_len,
+                final_args.r_n, final_args.r_c, final_args.orthogonal_weight,
+                final_args.learning_rate, final_args.batch_size, current_seed
+            )
+
+            print(f"\n--- Retraining with Robust Seed {i+1}/{num_eval_seeds} (Seed: {current_seed}) ---")
+            self._set_random_seed(current_seed)
+            exp = Exp_Main(final_args)
+            exp.train(setting, optunaTrialReport=None)
+            
+            val_loss = exp.vali_from_setting(setting)
+            print(f">>> Seed {current_seed} Validation Loss: {val_loss:.7f}")
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_seed = current_seed
+                best_setting = setting
+
+        print('\n' + '*' * 60)
+        print(f'Selection Complete: Seed {best_seed} won with Val Loss {best_val_loss:.7f}')
+        print('*' * 60)
+
+        # 【改造点 3：对最终模型在 Test Set 进行一锤定音盲测】
+        print('\nEvaluating on independent TEST set ONCE using the selected model...')
+        
         exp = Exp_Main(final_args)
-
-        print(f'Retraining with best params: {self.study.best_params}')
-        exp.train(setting, optunaTrialReport=None)
-
-        print('\nEvaluating on independent TEST set...')
-        test_result = exp.test(setting)
+        test_result = exp.test(best_setting, test=1) 
+        
         if test_result is None:
             test_mse, test_mae = np.nan, np.nan
         else:
@@ -175,8 +207,8 @@ class Tuner:
         self.result_dic['final_test_mae'].append(test_mae)
 
         print('=' * 60)
-        print(f'Final Test MSE: {test_mse:.6f}')
-        print(f'Final Test MAE: {test_mae:.6f}')
+        print(f'Final Reportable Test MSE: {test_mse:.6f}')
+        print(f'Final Reportable Test MAE: {test_mae:.6f}')
         print('=' * 60 + '\n')
 
     def save_result(self, args):
