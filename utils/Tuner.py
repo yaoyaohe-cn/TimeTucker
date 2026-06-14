@@ -41,7 +41,6 @@ class Tuner:
 
         for key, value in params.items():
             setattr(trial_args, key, value)
-        trial_args.basis_num = trial_args.r_n
 
         # 【改造点 1：Trial-specific seed，探索初始化分布】
         trial_seed = self.fixedSeed + trial.number
@@ -157,7 +156,6 @@ class Tuner:
             
         if 'use_orthogonal' not in self.study.best_params:
             final_args.use_orthogonal = self._split_int_choices(getattr(args, 'optuna_use_orthogonal_choices', '1'))[0]
-        final_args.basis_num = final_args.r_n
 
         # 【改造点 2：串行多 Seed 验证，严格选出最优模型】
         num_eval_seeds = 3  
