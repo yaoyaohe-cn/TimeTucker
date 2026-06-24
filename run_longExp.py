@@ -41,9 +41,12 @@ parser.add_argument('--pred_len', type=int, default=96, help='prediction sequenc
 parser.add_argument('--period_len', type=int, default=24, help='period length')
 parser.add_argument('--r_n', type=int, default=6, help='TimeTucker segment rank')
 parser.add_argument('--r_c', type=int, default=16, help='TimeTucker channel rank')
+parser.add_argument('--r_p', type=int, default=8, help='TimeTucker period rank')
 parser.add_argument('--use_period_norm', type=int, default=1, help='norm')
+parser.add_argument('--use_revin', type=int, default=1, help='RevIN normalization')
+parser.add_argument('--share_factors', type=int, default=1, help='share encoder/decoder factors')
 parser.add_argument('--use_orthogonal', type=int, default=1, help='orthogonal')
-parser.add_argument('--orthogonal_weight', type=float, default=0.1, help='orthogonal weight')
+parser.add_argument('--orthogonal_weight', type=float, default=0.005, help='orthogonal weight')
 
 # PatchTST / Formers (Retained for compatibility)
 parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
@@ -51,7 +54,6 @@ parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropou
 parser.add_argument('--patch_len', type=int, default=16, help='patch length')
 parser.add_argument('--stride', type=int, default=8, help='stride')
 parser.add_argument('--padding_patch', default='end', help='padding on the end')
-parser.add_argument('--revin', type=int, default=1, help='RevIN')
 parser.add_argument('--affine', type=int, default=0, help='RevIN-affine')
 parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
 parser.add_argument('--decomposition', type=int, default=0, help='decomposition')
@@ -95,9 +97,6 @@ parser.add_argument('--optuna_trial_num', type=int, default=30, help='number of 
 parser.add_argument('--optuna_n_startup_trials', type=int, default=8, help='startup trials before Optuna pruning')
 parser.add_argument('--optuna_seed', type=int, default=2026, help='random seed for Optuna tuning')
 parser.add_argument('--n_jobs', type=int, default=1, help='parallel Optuna jobs (MUST BE 1 for PyTorch global seed safety)')
-parser.add_argument('--optuna_period_search', action='store_true', default=False, help='search period_len')
-parser.add_argument('--optuna_period_choices', type=str, default='12,24,48', help='choices for period_len search')
-parser.add_argument('--optuna_use_orthogonal_choices', type=str, default='0,1', help='comma-separated choices for use_orthogonal')
 parser.add_argument('--optuna_results_dir', type=str, default='./Output', help='Optuna output directory')
 
 # GPU

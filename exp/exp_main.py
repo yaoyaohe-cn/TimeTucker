@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import TimeTucker  # 【修复】：彻底移除了不存在的 TimeBase
+from models import TimeTucker
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -23,7 +23,6 @@ class Exp_Main(Exp_Basic):
         self.use_orthogonal = args.use_orthogonal
         
     def _build_model(self):
-        # 【修复】：模型字典里只保留当前架构，彻底清除 LightTimeBaseTST 历史包袱
         model_dict = {'TimeTucker': TimeTucker}
         model = model_dict[self.args.model].Model(self.args).float()
         print(f"Total Parameters: {sum(p.numel() for p in model.parameters())}")
@@ -57,7 +56,6 @@ class Exp_Main(Exp_Basic):
         self.model.eval()
         with torch.no_grad():
             for i, batch in enumerate(vali_loader):
-                # 动态解包：兼容只返回 (x, y) 和返回 (x, y, x_mark, y_mark) 的不同数据集
                 batch_x = batch[0].float().to(self.device)
                 batch_y = batch[1].float()
                 if len(batch) == 4:
@@ -136,7 +134,6 @@ class Exp_Main(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
                 
-                # 动态解包
                 batch_x = batch[0].float().to(self.device)
                 batch_y = batch[1].float().to(self.device)
                 if len(batch) == 4:
@@ -176,6 +173,8 @@ class Exp_Main(Exp_Basic):
                 train_loss.append(loss.item())
                 if isinstance(orthogonal_loss, torch.Tensor):
                     ortho_loss_record.append(orthogonal_loss.item())
+                else:
+                    ortho_loss_record.append(orthogonal_loss)
 
                 if self.args.use_amp:
                     back_loss = loss + self.args.orthogonal_weight * orthogonal_loss
@@ -240,7 +239,6 @@ class Exp_Main(Exp_Basic):
         self.model.eval()
         with torch.no_grad():
             for i, batch in enumerate(test_loader):
-                # 动态解包
                 batch_x = batch[0].float().to(self.device)
                 batch_y = batch[1].float().to(self.device)
                 if len(batch) == 4:

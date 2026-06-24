@@ -1,8 +1,8 @@
 model_name=TimeTucker
 root_path_name=../dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=ETTm1.csv
+model_id_name=ETTm1
+data_name=ETTm1
 seq_len=720
 gpu=${GPU:-0}
 
@@ -18,7 +18,7 @@ dir=./logs/${model_id_name}
 pred_len=96
 python -u run_longExp.py \
     --is_training 1 \
-    --orthogonal_weight 0.12 \
+    --orthogonal_weight 0.16 \
     --root_path "$root_path_name" \
     --data_path "$data_path_name" \
     --model_id "${model_id_name}_${seq_len}_${pred_len}" \
@@ -27,11 +27,11 @@ python -u run_longExp.py \
     --features M \
     --seq_len "$seq_len" \
     --pred_len "$pred_len" \
-    --period_len 24 \
+    --period_len 4 \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
-    --r_n 12 \
+    --r_n 60 \
     --r_c 7 \
     --r_p 8 \
     --use_revin 1 \

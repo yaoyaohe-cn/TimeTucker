@@ -5,9 +5,9 @@ if [ ! -d "./logs/Optuna" ]; then
 fi
 
 model_name=TimeTucker
-data=ETTh1
-data_path=ETTh1.csv
-enc_in=7
+data=Electricity
+data_path=electricity.csv
+enc_in=321
 seq_len=720
 period_len=24
 gpu=${GPU:-0}
@@ -21,7 +21,7 @@ for pred_len in "${pred_lens[@]}"; do
 
     for worker_id in $(seq 1 $num_workers); do
         export CUDA_VISIBLE_DEVICES=$gpu
-        
+
         python -u run_longExp.py \
           --is_training 1 \
           --model $model_name \
@@ -45,9 +45,9 @@ for pred_len in "${pred_lens[@]}"; do
           --patience 5 \
           --gpu 0 \
           > logs/Optuna/${data}_${pred_len}_worker${worker_id}.log 2>&1 &
-          
+
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launched Worker $worker_id on GPU $gpu (PID: $!, Logs: logs/Optuna/${data}_${pred_len}_worker${worker_id}.log)"
-        
+
         sleep 2
     done
 

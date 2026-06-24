@@ -1,8 +1,8 @@
 model_name=TimeTucker
 root_path_name=../dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=ETTh2.csv
+model_id_name=ETTh2
+data_name=ETTh2
 seq_len=720
 gpu=${GPU:-0}
 
