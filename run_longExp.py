@@ -91,13 +91,7 @@ parser.add_argument('--lradj', type=str, default='type3', help='adjust learning 
 parser.add_argument('--pct_start', type=float, default=0.3, help='pct_start')
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 
-# hyperparameter optimization
-parser.add_argument('--use_hyperParam_optim', action='store_true', default=False, help='use Optuna tuner')
-parser.add_argument('--optuna_trial_num', type=int, default=30, help='number of Optuna trials')
-parser.add_argument('--optuna_n_startup_trials', type=int, default=8, help='startup trials before Optuna pruning')
-parser.add_argument('--optuna_seed', type=int, default=2026, help='random seed for Optuna tuning')
-parser.add_argument('--n_jobs', type=int, default=1, help='parallel Optuna jobs (MUST BE 1 for PyTorch global seed safety)')
-parser.add_argument('--optuna_results_dir', type=str, default='./Output', help='Optuna output directory')
+parser.add_argument('--seed', type=int, default=2026, help='random seed')
 
 # GPU
 parser.add_argument('--use_gpu', type=str2bool, default=True, help='use gpu')
@@ -108,7 +102,6 @@ parser.add_argument('--test_flop', action='store_true', default=False, help='See
 
 args = parser.parse_args()
 
-fix_seed_list = range(args.optuna_seed, args.optuna_seed + 10)
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
 if args.use_gpu and args.use_multi_gpu:
@@ -122,18 +115,15 @@ print(args)
 
 Exp = Exp_Main
 
-if args.is_training and args.use_hyperParam_optim:
-    from utils.Tuner import Tuner
-    tuner = Tuner(ranSeed=args.optuna_seed, n_jobs=args.n_jobs)
-    tuner.tune(args)
-elif args.is_training:
+if args.is_training:
     for ii in range(args.itr):
-        random.seed(fix_seed_list[ii])
-        torch.manual_seed(fix_seed_list[ii])
-        np.random.seed(fix_seed_list[ii])
+        seed = args.seed + ii
+        random.seed(seed)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
         setting = '{}_{}_{}_ft{}_sl{}_pl{}_{}_{}_seed{}'.format(
             args.model_id, args.model, args.data, args.features,
-            args.seq_len, args.pred_len, args.des, ii, fix_seed_list[ii])
+            args.seq_len, args.pred_len, args.des, ii, seed)
 
         exp = Exp(args)
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -142,9 +132,10 @@ elif args.is_training:
         exp.test(setting)
 else:
     ii = 0
+    seed = args.seed + ii
     setting = '{}_{}_{}_ft{}_sl{}_pl{}_{}_{}_seed{}'.format(
         args.model_id, args.model, args.data, args.features,
-        args.seq_len, args.pred_len, args.des, ii, fix_seed_list[ii])
+        args.seq_len, args.pred_len, args.des, ii, seed)
 
     exp = Exp(args)
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))

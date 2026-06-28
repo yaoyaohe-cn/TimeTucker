@@ -91,13 +91,7 @@ class Exp_Main(Exp_Basic):
         self.model.train()
         return np.average(total_loss)
 
-    def vali_from_setting(self, setting):
-        best_model_path = os.path.join(self.args.checkpoints, setting, 'checkpoint.pth')
-        self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
-        vali_data, vali_loader = self._get_data(flag='val')
-        return float(self.vali(vali_data, vali_loader, self._select_criterion()))
-
-    def train(self, setting, optunaTrialReport=None):
+    def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
@@ -209,12 +203,6 @@ class Exp_Main(Exp_Basic):
             print("Epoch: {} | Train Loss: {:.7f} Vali Loss: {:.7f} Test Loss: {:.7f}".format(
                 epoch + 1, train_loss, vali_loss, test_loss))
                 
-            if optunaTrialReport is not None:
-                optunaTrialReport.report(float(vali_loss), epoch)
-                if optunaTrialReport.should_prune():
-                    import optuna
-                    raise optuna.exceptions.TrialPruned()
-
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")

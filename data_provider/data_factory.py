@@ -46,7 +46,9 @@ def data_provider(args, flag):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            drop_last=drop_last)
+            drop_last=drop_last,
+            pin_memory=getattr(args, 'use_gpu', False),
+            persistent_workers=args.num_workers > 0)
         return data_set, data_loader
     elif args.task_name == 'classification':
         drop_last = False
@@ -61,6 +63,8 @@ def data_provider(args, flag):
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
             drop_last=drop_last,
+            pin_memory=getattr(args, 'use_gpu', False),
+            persistent_workers=args.num_workers > 0,
             collate_fn=lambda x: collate_fn(x, max_len=args.seq_len)
         )
         return data_set, data_loader
@@ -85,6 +89,8 @@ def data_provider(args, flag):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            drop_last=drop_last)
+            drop_last=drop_last,
+            pin_memory=getattr(args, 'use_gpu', False),
+            persistent_workers=args.num_workers > 0)
         return data_set, data_loader
     
